@@ -23,23 +23,6 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                // Build Docker image
-                sh 'docker build -t your-docker-repo/banking-app .'
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                // Push the Docker image to your Docker repository
-                withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
-                    sh 'docker push your-docker-repo/banking-app:latest'
-                }
-            }
-        }
-
         stage('Deploy') {
             steps {
                 // Deploy the application (if you’re using Kubernetes or similar)
