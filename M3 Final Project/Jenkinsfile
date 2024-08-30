@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Clone the repository
+                git 'https://your-repository-url.git'
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                // Install dependencies
+                sh 'pip install -r requirements.txt'
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                // Run any tests (if you have them)
+                sh 'python -m unittest discover -s tests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build Docker image
+                sh 'docker build -t your-docker-repo/banking-app .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                // Push the Docker image to your Docker repository
+                withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                    sh 'docker push your-docker-repo/banking-app:latest'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                // Deploy the application (if you’re using Kubernetes or similar)
+                sh 'kubectl apply -f k8s/deployment.yaml'
+            }
+        }
+    }
+
+    post {
+        always {
+            // Cleanup actions (e.g., stopping services)
+            echo 'Cleanup...'
+        }
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed.'
+        }
+    }
+}
