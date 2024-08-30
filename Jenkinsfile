@@ -5,7 +5,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Clone the repository
-                git 'https://github.com/imo-tepp/Final-Project-M3.git'
+                git credentialsId: 'GitHub_Access', url: 'https://github.com/imo-tepp/Final-Project-M3.git'
             }
         }
         
