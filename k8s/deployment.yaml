@@ -1,0 +1,109 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml """\
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    builder: promotion
+spec:
+  serviceAccountName: jenkins-agent
+  containers:
+  - name: awscli
+    image: amazon/aws-cli
+    command:
+    - cat
+    tty: true
+  - name: kubectl
+    image: bitnami/kubectl
+    command:
+    - cat
+    tty: true
+""".stripIndent()
+    }
+  }
+  parameters {
+    string(name: 'COURSE', description: 'Course identifier (e.g., c777)')
+    string(name: 'TEAM', description: 'team (e.g., team01)')
+  }
+  stages {
+    stage('Promote to PROD env') {
+      steps {
+        container(name: 'awscli') {
+          sh '''
+          #!/bin/bash
+          # Check if COURSE or TEAM parameters are empty
+          if [ -z "$COURSE" ]; then
+              echo "ERROR: COURSE parameter must be provided."
+              exit 1
+          fi
+
+          if [ -z "$TEAM" ]; then
+              echo "ERROR: TEAM parameter must be provided."
+              exit 1
+          fi
+
+          export AWS_DEFAULT_REGION=us-east-1
+          API_build_num=$(aws ecr list-images --repository-name production-support-course  --filter "tagStatus=TAGGED" --query "imageIds[?contains(imageTag, '${COURSE}${TEAM}api')].imageTag" --output text | sed "s/\\t/\\n/g" | sed "s/-/ /g" | sort -k3,3n | tail -1 | awk '{print $3}')
+          echo $API_build_num
+          DB_build_num=$(aws ecr list-images --repository-name production-support-course  --filter "tagStatus=TAGGED" --query "imageIds[?contains(imageTag, '${COURSE}${TEAM}db')].imageTag" --output text | sed "s/\\t/\\n/g" | sed "s/-/ /g" | sort -k3,3n | tail -1 | awk '{print $3}')
+          FE_build_num=$(aws ecr list-images --repository-name production-support-course  --filter "tagStatus=TAGGED" --query "imageIds[?contains(imageTag, '${COURSE}${TEAM}fe')].imageTag" --output text | sed "s/\\t/\\n/g" | sed "s/-/ /g" | sort -k3,3n | tail -1 | awk '{print $3}')
+          APIMANIFEST=$(aws ecr batch-get-image --repository-name production-support-course --image-ids imageTag=${COURSE}${TEAM}api-dev-${API_build_num} --query 'images[].imageManifest' --output text)
+          DBMANIFEST=$(aws ecr batch-get-image --repository-name production-support-course --image-ids imageTag=${COURSE}${TEAM}db-dev-${DB_build_num} --query 'images[].imageManifest' --output text)
+          FEMANIFEST=$(aws ecr batch-get-image --repository-name production-support-course --image-ids imageTag=${COURSE}${TEAM}fe-dev-${FE_build_num} --query 'images[].imageManifest' --output text)
+
+          # Check API
+          if [ $(aws ecr describe-images --repository-name production-support-course | grep "${COURSE}${TEAM}api-prod-${API_build_num}" | wc -l) -eq 0 ]
+          then
+            # We don't have prod so tag Dev to prod
+            if ! aws ecr put-image --repository-name production-support-course --image-tag "${COURSE}${TEAM}api-prod-${API_build_num}" --image-manifest "$APIMANIFEST"
+            then
+              exitvalue=1
+            fi
+          fi
+          # Check DB
+          if [ $(aws ecr describe-images --repository-name production-support-course | grep "${COURSE}${TEAM}db-prod-${DB_build_num}" | wc -l) -eq 0 ]
+          then
+            # We don't have uat so tag Dev to prod
+            if ! aws ecr put-image --repository-name production-support-course --image-tag "${COURSE}${TEAM}db-prod-${DB_build_num}" --image-manifest "$DBMANIFEST"
+            then
+              exitvalue="2"
+            fi
+          fi
+          
+          # Check Front End
+          if [ $(aws ecr describe-images --repository-name production-support-course | grep "${COURSE}${TEAM}fe-prod-${FE_build_num}" | wc -l) -eq 0 ]
+          then
+            # We don't have uat so tag Dev to prod
+            if ! aws ecr put-image --repository-name production-support-course --image-tag "${COURSE}${TEAM}fe-prod-${FE_build_num}" --image-manifest "$FEMANIFEST"
+            then
+              exitvalue=3
+            fi
+          fi
+          '''
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        container(name: 'kubectl') {
+          script {
+            def namespace = "${COURSE}-${TEAM}-namespace"
+            sh """
+            # Create namespace if it doesn't exist
+            kubectl get namespace ${namespace} || kubectl create namespace ${namespace}
+
+            # Deploy your application to the specified namespace
+            kubectl apply -f k8s/deployment.yaml -n ${namespace}
+            """
+          }
+        }
+      }
+    }
+  }
+  environment {
+    ECR_REPO = '108174090253.dkr.ecr.us-east-1.amazonaws.com/production-support-course'
+  }
+}
