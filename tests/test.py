@@ -1,7 +1,7 @@
 import unittest
 from flask import Flask
 from flask_testing import TestCase
-from app import app, db, User
+from M3_Final_Project.app import app, db, User
 
 class TestBankingApp(TestCase):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
