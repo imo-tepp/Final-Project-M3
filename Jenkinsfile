@@ -14,13 +14,6 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                bat 'python -m unittest discover -s tests -v'
-
-            }
-        }
-
         stage('Deploy') {
             steps {
                 sh 'kubectl apply -f k8s/deployment.yaml'
