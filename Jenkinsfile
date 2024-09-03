@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'fastapi-app'  // Just use a local name for your image
+        DOCKER_IMAGE = "konstantinosvarelis/fastapi-app"  
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         EC2_INSTANCE = 'ec2-user@ec2-3-8-203-126.eu-west-2.compute.amazonaws.com'  //EC2 instance's public DNS
     }
@@ -27,6 +27,7 @@ pipeline {
                 script {
                     // Build the Docker image for the FastAPI app
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker push "${DOCKER_IMAGE}:${DOCKER_TAG}"
                 }
             }
         }
@@ -47,7 +48,18 @@ pipeline {
                 }
             }
         }
+
+        stage('Login to Docker Hub') {
+            steps {
+                script {
+                    def username = credentials('DockerHub').getUsername()
+                    def password = credentials('DockerHub').getPassword()
+                    docker login -u $username -p $password
+                }
+            }
+        }
     }
+
 
     post {
         always {
