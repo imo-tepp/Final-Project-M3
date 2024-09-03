@@ -1,35 +1,57 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = 'fastapi-app'  // Just use a local name for your image
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        EC2_INSTANCE = 'ec2-user@ec2-3-8-203-126.eu-west-2.compute.amazonaws.com'  //EC2 instance's public DNS
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git credentialsId: 'GitHub_Access', branch: 'main', url: 'https://github.com/imo-tepp/Final-Project-M3.git'
+                // Checkout the latest code from your repository
+                checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                bat 'pip install -r requirements.txt'
+                // Install the required Python packages
+                sh 'pip install -r requirements.txt'
             }
         }
 
-        stage('Test') {
+        stage('Build Docker Image') {
             steps {
-                bat 'python -m unittest discover -s tests'
+                script {
+                    // Build the Docker image for the FastAPI app
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                }
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to EC2') {
             steps {
-                sh 'kubectl apply -f k8s/deployment.yaml'
+                script {
+                    // SSH into the EC2 instance and deploy the Docker container
+                    sshagent(['ec2-ssh-key']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${EC2_INSTANCE} '
+                                docker stop fastapi-app || true
+                                docker rm fastapi-app || true
+                                docker run -d --name fastapi-app -p 8000:8000 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            '
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
         always {
-            echo 'Cleanup...'
+            echo 'Cleaning up...'
         }
         success {
             echo 'Deployment successful!'
