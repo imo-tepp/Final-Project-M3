@@ -18,7 +18,12 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # FastAPI setup
 app = FastAPI()
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
+# Dynamically determine the path to the templates directory
+current_file_directory = os.path.dirname(__file__)
+templates_directory = os.path.join(current_file_directory, "templates")
+
+# Initialize Jinja2Templates with the relative path
+templates = Jinja2Templates(directory=templates_directory)
 
 # SQLAlchemy models
 class User(Base):
