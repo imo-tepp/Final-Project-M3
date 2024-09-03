@@ -1,6 +1,6 @@
-fastapi==0.103.1
-uvicorn==0.23.2
-SQLAlchemy==2.0.21
-passlib[bcrypt]==1.7.4
-jinja2==3.1.2
-python-multipart==0.0.6
+fastapi
+uvicorn
+SQLAlchemy
+passlib[bcrypt]
+jinja2
+python-multipart
