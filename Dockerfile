@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY M3_Final_Project/app.py .
 
-COPY templates/ /app/templates/
+COPY templates/ /M3_Final_Project/templates/
 
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
