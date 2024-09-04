@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "konstantinosvarelis/fastapi-app"  
+        DOCKER_IMAGE = "fastapi-app"  
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         EC2_INSTANCE = 'ec2-user@ec2-3-8-203-126.eu-west-2.compute.amazonaws.com'  //EC2 instance's public DNS
     }
@@ -18,11 +18,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 // Install the required Python packages
-                sh '''
-                        python3 -m venv venv
-                        source venv/bin/activate
-                        pip install -r requirements.txt
-                    '''
+                sh 'pip install -r requirements.txt'
             }
         }
 
