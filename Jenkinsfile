@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "fastapi-app"  
+        DOCKER_IMAGE = "your_dockerhub_username/fastapi-app"  // Use your Docker Hub username here
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         EC2_INSTANCE = 'ec2-user@ec2-3-8-203-126.eu-west-2.compute.amazonaws.com'  //EC2 instance's public DNS
     }
@@ -18,20 +18,33 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 // Install the required Python packages
-                    sh '''
-                        python3 -m venv venv
-                        source venv/bin/activate
-                        pip install -r requirements.txt
-                    '''
+                sh '''
+                    python3 -m venv venv
+                    source venv/bin/activate
+                    pip install -r requirements.txt
+                '''
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Login to Docker Hub') {
             steps {
                 script {
-                    // Build the Docker image for the FastAPI app
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    docker push "${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    // Login to Docker Hub using Jenkins credentials
+                    withCredentials([usernamePassword(credentialsId: 'DockerHub', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                        sh 'docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS'
+                    }
+                }
+            }
+        }
+
+        stage('Build and Push Docker Image') {
+            steps {
+                script {
+                    // Build and Push the Docker image for the FastAPI app
+                    sh '''
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    '''
                 }
             }
         }
@@ -45,6 +58,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${EC2_INSTANCE} '
                                 docker stop fastapi-app || true
                                 docker rm fastapi-app || true
+                                docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
                                 docker run -d --name fastapi-app -p 8000:8000 ${DOCKER_IMAGE}:${DOCKER_TAG}
                             '
                         """
@@ -52,18 +66,7 @@ pipeline {
                 }
             }
         }
-
-        stage('Login to Docker Hub') {
-            steps {
-                script {
-                    def username = credentials('DockerHub').getUsername()
-                    def password = credentials('DockerHub').getPassword()
-                    docker login -u $username -p $password
-                }
-            }
-        }
     }
-
 
     post {
         always {
