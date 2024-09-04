@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "your_dockerhub_username/fastapi-app"  // Use your Docker Hub username here
+        DOCKER_IMAGE = "riajul98/fastapi-app"  // Use your Docker Hub username here
         DOCKER_TAG = "${env.BUILD_NUMBER}"
-        EC2_INSTANCE = 'ec2-user@ec2-3-8-203-126.eu-west-2.compute.amazonaws.com'  //EC2 instance's public DNS
+        EC2_INSTANCE = 'ec2-user@ec2-52-211-185-123.eu-west-1.compute.amazonaws.com'  //EC2 instance's public DNS
     }
 
     stages {
