@@ -8,7 +8,6 @@ from passlib.context import CryptContext
 from prometheus_fastapi_instrumentator import Instrumentator
 import os
 
-
 # SQLAlchemy setup
 DATABASE_URL = "sqlite:///./banking.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -26,6 +25,9 @@ templates_directory = os.path.join(current_file_directory, "templates")
 
 # Initialize Jinja2Templates with the relative path
 templates = Jinja2Templates(directory=templates_directory)
+
+# Initialize the Instrumentator for Prometheus metrics
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # SQLAlchemy models
 class User(Base):
