@@ -5,7 +5,9 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
+from prometheus_fastapi_instrumentator import Instrumentator
 import os
+
 
 # SQLAlchemy setup
 DATABASE_URL = "sqlite:///./banking.db"
